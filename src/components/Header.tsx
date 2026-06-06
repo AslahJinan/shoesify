@@ -4,10 +4,13 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Header() {
   const { cartCount } = useCart();
+  const { user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -86,6 +89,82 @@ export default function Header() {
               </span>
             )}
           </Link>
+          {/* User Profile / Login Button */}
+          <div className="hidden md:block">
+            {user ? (
+              <div className="relative">
+                <button
+                  onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                  className="flex items-center gap-2 cursor-pointer focus:outline-none"
+                >
+                  <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-label-lg uppercase border border-primary/20 hover:bg-primary/20 transition-colors">
+                    {user.photoURL ? (
+                      <img src={user.photoURL} alt="Avatar" className="w-full h-full rounded-full object-cover" />
+                    ) : (
+                      user.displayName ? user.displayName.substring(0, 2) : user.email?.substring(0, 2) || "U"
+                    )}
+                  </div>
+                </button>
+
+                {profileMenuOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setProfileMenuOpen(false)}
+                    ></div>
+                    <div className="absolute right-0 mt-3 w-64 bg-white rounded-xl shadow-2xl py-4 border border-surface-container-high z-20 animate-fadeIn">
+                      <div className="px-4 pb-3 border-b border-surface-container flex flex-col gap-1">
+                        <p className="font-bold text-on-surface text-body-md truncate">
+                          {user.displayName || "Shoesify User"}
+                        </p>
+                        <p className="text-secondary text-label-sm truncate">{user.email}</p>
+                        
+                        <div className="mt-2">
+                          {user.emailVerified ? (
+                            <span className="inline-flex items-center gap-1 bg-green-50 text-green-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">
+                              <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                              Verified
+                            </span>
+                          ) : (
+                            <Link
+                              href="/verify-email"
+                              onClick={() => setProfileMenuOpen(false)}
+                              className="inline-flex items-center gap-1 bg-amber-50 hover:bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider transition-colors"
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                              Verify Email
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+                      <div className="pt-2 px-2">
+                        <button
+                          onClick={async () => {
+                            setProfileMenuOpen(false);
+                            await logout();
+                          }}
+                          className="w-full flex items-center gap-3 px-3 py-2 text-label-lg text-error hover:bg-error-container/20 rounded-lg transition-colors cursor-pointer text-left font-semibold"
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>
+                            logout
+                          </span>
+                          Sign Out
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <Link
+                href="/login"
+                className="inline-flex items-center bg-primary text-white px-5 py-2.5 rounded-lg font-label-lg text-label-lg hover:bg-on-background transition-all duration-300"
+              >
+                Sign In
+              </Link>
+            )}
+          </div>
+
           <button 
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="md:hidden text-on-surface"
@@ -127,6 +206,64 @@ export default function Header() {
               placeholder="Search..." 
               type="text"
             />
+          </div>
+
+          {/* Mobile Auth UI */}
+          <div className="mt-2 border-t border-surface-container/50 pt-4">
+            {user ? (
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-3 px-2">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold uppercase border border-primary/20">
+                    {user.photoURL ? (
+                      <img src={user.photoURL} alt="Avatar" className="w-full h-full rounded-full object-cover" />
+                    ) : (
+                      user.displayName ? user.displayName.substring(0, 2) : user.email?.substring(0, 2) || "U"
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-bold text-on-surface text-body-md">
+                      {user.displayName || "Shoesify User"}
+                    </p>
+                    <p className="text-secondary text-label-sm">{user.email}</p>
+                  </div>
+                </div>
+                <div className="px-2 flex items-center justify-between mt-1">
+                  {user.emailVerified ? (
+                    <span className="inline-flex items-center gap-1 bg-green-50 text-green-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">
+                      Verified
+                    </span>
+                  ) : (
+                    <Link
+                      href="/verify-email"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="inline-flex items-center gap-1 bg-amber-50 text-amber-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider"
+                    >
+                      Verify Email
+                    </Link>
+                  )}
+                  <button
+                    onClick={async () => {
+                      setMobileMenuOpen(false);
+                      await logout();
+                    }}
+                    className="text-error font-label-lg text-label-lg flex items-center gap-1 hover:underline cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
+                      logout
+                    </span>
+                    Sign Out
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <Link
+                href="/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full text-center bg-primary text-white py-3 rounded-lg font-label-lg text-label-lg hover:bg-on-background transition-colors block"
+              >
+                Sign In
+              </Link>
+            )}
           </div>
         </div>
       )}

@@ -3,14 +3,27 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
 
 export default function CartPage() {
   const { cartItems, removeFromCart, updateQuantity, cartCount, cartSubtotal, clearCart } = useCart();
+  const { user } = useAuth();
+  const router = useRouter();
+
   const [promoCode, setPromoCode] = useState("");
   const [promoApplied, setPromoApplied] = useState(false);
   const [discountAmount, setDiscountAmount] = useState(0);
   const [checkoutStatus, setCheckoutStatus] = useState<"idle" | "success">("idle");
+
+  // Shipping details state
+  const [shippingName, setShippingName] = useState("");
+  const [shippingAddress, setShippingAddress] = useState("");
+  const [shippingCity, setShippingCity] = useState("");
+  const [shippingPincode, setShippingPincode] = useState("");
+  const [shippingPhone, setShippingPhone] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
 
   const shipping = cartCount > 0 ? (cartSubtotal > 200 ? 0 : 15) : 0;
   const taxRate = 0.0825; // 8.25% tax
@@ -27,8 +40,32 @@ export default function CartPage() {
   };
 
   const handleCheckout = () => {
+    if (!user) {
+      router.push("/login?redirect=/cart");
+      return;
+    }
+
+    if (!shippingName.trim() || !shippingAddress.trim() || !shippingCity.trim() || !shippingPincode.trim() || !shippingPhone.trim()) {
+      setFormError("Please fill in all shipping details and contact info.");
+      return;
+    }
+
+    if (!/^\d{6}$/.test(shippingPincode)) {
+      setFormError("Pincode must be exactly 6 digits.");
+      return;
+    }
+
+    setFormError(null);
+
     // Construct the WhatsApp message text
     let message = "Hello, I would like to place an order on Shoesify:\n\n";
+    
+    message += `*Shipping Address & Contact*:\n`;
+    message += `- Name: ${shippingName.trim()}\n`;
+    message += `- Address: ${shippingAddress.trim()}, ${shippingCity.trim()} - ${shippingPincode.trim()}\n`;
+    message += `- Phone: ${shippingPhone.trim()}\n\n`;
+
+    message += `*Items Ordered*:\n`;
     cartItems.forEach((item, index) => {
       message += `${index + 1}. *${item.name}* (${item.category})\n`;
       message += `   Size: ${item.size}\n`;
@@ -186,6 +223,111 @@ export default function CartPage() {
             ))}
           </div>
 
+          {/* Shipping Address & Contact Form */}
+          <div className="mt-12 bg-surface-container-lowest rounded-xl p-6 md:p-8 shadow-[0px_4px_20px_rgba(0,0,0,0.05)] border border-surface-container animate-fadeIn">
+            <h3 className="font-headline-md text-headline-md text-on-surface mb-2 flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary" style={{ fontSize: "28px" }}>local_shipping</span>
+              Shipping Details & Contact
+            </h3>
+            <p className="text-secondary font-body-md mb-6">
+              Enter your shipping address and contact phone number. All fields are required.
+            </p>
+
+            {user ? (
+              <div className="space-y-4">
+                {formError && (
+                  <div className="bg-error-container/20 border border-error/20 text-error px-4 py-2.5 rounded-lg text-label-lg flex items-center gap-2 animate-fadeIn">
+                    <span className="material-symbols-outlined text-[18px]">error</span>
+                    <span>{formError}</span>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="md:col-span-2">
+                    <label className="block text-label-sm font-semibold text-on-surface mb-1.5">
+                      Full Name
+                    </label>
+                    <input
+                      type="text"
+                      value={shippingName}
+                      onChange={(e) => setShippingName(e.target.value)}
+                      placeholder="Enter recipient's full name"
+                      className="w-full bg-surface-container border border-surface-variant rounded-xl p-3 text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-secondary/40"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-label-sm font-semibold text-on-surface mb-1.5">
+                      Street Address
+                    </label>
+                    <input
+                      type="text"
+                      value={shippingAddress}
+                      onChange={(e) => setShippingAddress(e.target.value)}
+                      placeholder="e.g. 123 Luxury Avenue, Apt 4B"
+                      className="w-full bg-surface-container border border-surface-variant rounded-xl p-3 text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-secondary/40"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-label-sm font-semibold text-on-surface mb-1.5">
+                      City
+                    </label>
+                    <input
+                      type="text"
+                      value={shippingCity}
+                      onChange={(e) => setShippingCity(e.target.value)}
+                      placeholder="e.g. Mumbai"
+                      className="w-full bg-surface-container border border-surface-variant rounded-xl p-3 text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-secondary/40"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-label-sm font-semibold text-on-surface mb-1.5">
+                      Pincode
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      value={shippingPincode}
+                      onChange={(e) => setShippingPincode(e.target.value.replace(/\D/g, ""))}
+                      placeholder="6-digit ZIP / PIN code"
+                      className="w-full bg-surface-container border border-surface-variant rounded-xl p-3 text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-secondary/40"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-label-sm font-semibold text-on-surface mb-1.5">
+                      Phone Number (Required)
+                    </label>
+                    <input
+                      type="tel"
+                      value={shippingPhone}
+                      onChange={(e) => setShippingPhone(e.target.value)}
+                      placeholder="e.g. +91 90123 45678"
+                      className="w-full bg-surface-container border border-surface-variant rounded-xl p-3 text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-secondary/40"
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-surface border border-surface-container-high rounded-xl p-6 text-center animate-fadeIn">
+                <span className="material-symbols-outlined text-primary mb-2 animate-pulse" style={{ fontSize: "36px" }}>
+                  lock
+                </span>
+                <p className="font-semibold text-on-surface text-body-md mb-4">
+                  Please Sign In to enter shipping & contact details
+                </p>
+                <Link
+                  href="/login?redirect=/cart"
+                  className="inline-flex bg-primary text-white px-6 py-2.5 rounded-lg font-label-lg text-label-lg hover:bg-on-background transition-colors cursor-pointer"
+                >
+                  Sign In to Checkout
+                </Link>
+              </div>
+            )}
+          </div>
+
           {/* Shipping Info Teaser */}
           <div className="mt-12 p-6 rounded-xl border border-outline-variant flex items-center gap-6 bg-surface-container-low">
             <div className="bg-primary-container text-on-primary-container p-3 rounded-full">
@@ -238,13 +380,23 @@ export default function CartPage() {
             </div>
 
             <div className="space-y-4">
-              <button
-                onClick={handleCheckout}
-                className="w-full py-4 bg-primary-container text-on-primary-container rounded-full font-display-lg text-label-lg hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                Proceed to Checkout
-                <span className="material-symbols-outlined">arrow_forward</span>
-              </button>
+              {user ? (
+                <button
+                  onClick={handleCheckout}
+                  className="w-full py-3 bg-primary text-white rounded-lg font-semibold text-body-md hover:bg-on-background active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  Proceed to Checkout
+                  <span className="material-symbols-outlined text-base">arrow_forward</span>
+                </button>
+              ) : (
+                <Link
+                  href="/login?redirect=/cart"
+                  className="w-full py-3 bg-secondary text-white rounded-lg font-semibold text-body-md hover:bg-on-background active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer text-center"
+                >
+                  Sign In to Proceed
+                  <span className="material-symbols-outlined text-base">login</span>
+                </Link>
+              )}
               <div className="pt-6">
                 <p className="text-label-sm font-label-sm text-secondary mb-4 text-center">WE ACCEPT</p>
                 <div className="flex justify-center gap-4 opacity-60 grayscale hover:grayscale-0 transition-all duration-300">
