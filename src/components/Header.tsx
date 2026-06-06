@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
@@ -99,7 +100,7 @@ export default function Header() {
                 >
                   <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-label-lg uppercase border border-primary/20 hover:bg-primary/20 transition-colors">
                     {user.photoURL ? (
-                      <img src={user.photoURL} alt="Avatar" className="w-full h-full rounded-full object-cover" />
+                      <Image src={user.photoURL} alt="Avatar" width={40} height={40} className="w-full h-full rounded-full object-cover" />
                     ) : (
                       user.displayName ? user.displayName.substring(0, 2) : user.email?.substring(0, 2) || "U"
                     )}
@@ -215,7 +216,7 @@ export default function Header() {
                 <div className="flex items-center gap-3 px-2">
                   <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold uppercase border border-primary/20">
                     {user.photoURL ? (
-                      <img src={user.photoURL} alt="Avatar" className="w-full h-full rounded-full object-cover" />
+                      <Image src={user.photoURL} alt="Avatar" width={40} height={40} className="w-full h-full rounded-full object-cover" />
                     ) : (
                       user.displayName ? user.displayName.substring(0, 2) : user.email?.substring(0, 2) || "U"
                     )}
