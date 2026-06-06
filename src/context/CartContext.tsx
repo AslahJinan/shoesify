@@ -26,27 +26,7 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  // Initialize with the mock default items from the cart.html mockup
-  const [cartItems, setCartItems] = useState<CartItem[]>([
-    {
-      id: "aerostride-pro",
-      name: "AeroStride Pro",
-      price: 185,
-      image: "https://lh3.googleusercontent.com/aida-public/AB6AXuCWiQk0myFQHTvu3QfEfhcrAmnBL3RWotidSHO-VPyjtmdU4yIZl_NbczouyFyjhGUQHsfp98ot0fpPiQEnn-x_maZHol6tnjs11QulioXErfp1ND5QFmXBuD-3Czfy97LLuXvXSlTq3BfBfDlrKr_uMSsSxLGIpOLZX46YoMrM_jCldKL08nBQSsPoDON2kvp6Db7b5NZxSAathNUqYAT9qC79_z0rC49ItMIa7m041z6ULe0DsFqYbotcz3P8t3DWssz28KLxZUMM",
-      category: "Kids",
-      size: "US 10.5",
-      quantity: 1,
-    },
-    {
-      id: "cloudwalker-elite",
-      name: "CloudWalker Elite",
-      price: 120,
-      image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBb-IeIcu1mFtN-YamYSnbidDSlS47rLK6ASPABYoZje3OZ4qrswiSw0UOnN-Z6X9VEeIGJyjU_BCY57ft0yvPFk0e6tQTO5RTYt-yIDZH6kmdPsOmTJ8KnWj-6pS8i2TBohZH9Sfw-K5gCSnfVpwfPDWND_DqBep3fuIcgLObT9N4vtPQ7PLRmDzfC1jdgpFlpW8kXRVy5F8qUCE2upY2p-WSCRHgLsQ536NZjD5AP5e5SfAwzkaHF6wOUfmlvS5_AyzenUme3UuX3",
-      category: "Kids",
-      size: "US 9.0",
-      quantity: 1,
-    },
-  ]);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
 
   const addToCart = (product: Product, size: string, quantity = 1) => {
     setCartItems((prevItems) => {

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useCart } from "@/context/CartContext";
 
 export default function CartPage() {
-  const { cartItems, removeFromCart, updateQuantity, cartCount, cartSubtotal } = useCart();
+  const { cartItems, removeFromCart, updateQuantity, cartCount, cartSubtotal, clearCart } = useCart();
   const [promoCode, setPromoCode] = useState("");
   const [promoApplied, setPromoApplied] = useState(false);
   const [discountAmount, setDiscountAmount] = useState(0);
@@ -27,6 +27,34 @@ export default function CartPage() {
   };
 
   const handleCheckout = () => {
+    // Construct the WhatsApp message text
+    let message = "Hello, I would like to place an order on Shoesify:\n\n";
+    cartItems.forEach((item, index) => {
+      message += `${index + 1}. *${item.name}* (${item.category})\n`;
+      message += `   Size: ${item.size}\n`;
+      message += `   Qty: ${item.quantity}\n`;
+      message += `   Price: $${item.price.toFixed(2)} each\n`;
+      message += `   Subtotal: $${(item.price * item.quantity).toFixed(2)}\n\n`;
+    });
+
+    if (discountAmount > 0) {
+      message += `Subtotal: $${cartSubtotal.toFixed(2)}\n`;
+      message += `Discount: -$${discountAmount.toFixed(2)}\n`;
+    }
+    message += `Estimated Shipping: ${shipping === 0 ? "FREE" : `$${shipping.toFixed(2)}`}\n`;
+    message += `Tax (8.25%): $${tax.toFixed(2)}\n`;
+    message += `*Total Amount*: *$${finalTotal.toFixed(2)}*\n`;
+
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/919074746340?text=${encodedMessage}`;
+
+    // Open WhatsApp URL in a new tab
+    window.open(whatsappUrl, "_blank");
+
+    // Clear the cart
+    clearCart();
+
+    // Show confirmation screen
     setCheckoutStatus("success");
   };
 
