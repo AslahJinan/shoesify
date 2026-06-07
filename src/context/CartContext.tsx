@@ -1,6 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef } from "react";
+import { User } from "firebase/auth";
 import { Product } from "@/data/products";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
@@ -34,9 +35,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
+  const prevUserRef = useRef<User | null>(null);
+
   // Load cart on auth state changes
   useEffect(() => {
     if (authLoading) return;
+
+    const prevUser = prevUserRef.current;
+    prevUserRef.current = user;
 
     setIsLoaded(false); // Disable saving while loading the new user's cart state
 
@@ -87,17 +93,27 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         }
       } else {
         // Guest user - load from cookies
-        try {
-          const guestCartStr = getCookie("shoesify_cart");
-          if (guestCartStr) {
-            setCartItems(JSON.parse(guestCartStr));
-          } else {
-            setCartItems([]);
+        // If transitioning from logged-in to logged-out (logout), preserve current state in cookies
+        if (prevUser !== null) {
+          try {
+            setCookie("shoesify_cart", JSON.stringify(cartItems));
+          } catch (err) {
+            console.error("Error saving cart to cookies on logout:", err);
           }
-        } catch (err) {
-          console.error("Error loading cart from cookies:", err);
-        } finally {
           setIsLoaded(true);
+        } else {
+          try {
+            const guestCartStr = getCookie("shoesify_cart");
+            if (guestCartStr) {
+              setCartItems(JSON.parse(guestCartStr));
+            } else {
+              setCartItems([]);
+            }
+          } catch (err) {
+            console.error("Error loading cart from cookies:", err);
+          } finally {
+            setIsLoaded(true);
+          }
         }
       }
     };

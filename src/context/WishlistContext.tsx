@@ -1,6 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef } from "react";
+import { User } from "firebase/auth";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import { doc, getDoc, setDoc } from "firebase/firestore";
@@ -20,10 +21,14 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
   const [wishlistItems, setWishlistItems] = useState<string[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const prevUserRef = useRef<User | null>(null);
 
   // Load wishlist on auth state changes
   useEffect(() => {
     if (authLoading) return;
+
+    const prevUser = prevUserRef.current;
+    prevUserRef.current = user;
 
     setIsLoaded(false); // Disable saving while loading the new user's wishlist
 
@@ -65,17 +70,27 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
         }
       } else {
         // Guest user - load from cookies
-        try {
-          const guestWishlistStr = getCookie("shoesify_wishlist");
-          if (guestWishlistStr) {
-            setWishlistItems(JSON.parse(guestWishlistStr));
-          } else {
-            setWishlistItems([]);
+        // If transitioning from logged-in to logged-out (logout), preserve current state in cookies
+        if (prevUser !== null) {
+          try {
+            setCookie("shoesify_wishlist", JSON.stringify(wishlistItems));
+          } catch (err) {
+            console.error("Error saving wishlist to cookies on logout:", err);
           }
-        } catch (err) {
-          console.error("Error loading wishlist from cookies:", err);
-        } finally {
           setIsLoaded(true);
+        } else {
+          try {
+            const guestWishlistStr = getCookie("shoesify_wishlist");
+            if (guestWishlistStr) {
+              setWishlistItems(JSON.parse(guestWishlistStr));
+            } else {
+              setWishlistItems([]);
+            }
+          } catch (err) {
+            console.error("Error loading wishlist from cookies:", err);
+          } finally {
+            setIsLoaded(true);
+          }
         }
       }
     };
