@@ -5,6 +5,7 @@ import { Product } from "@/data/products";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import { getCookie, setCookie, deleteCookie } from "@/lib/cookies";
 
 export interface CartItem {
   id: string;
@@ -50,8 +51,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             dbCart = docSnap.data().items || [];
           }
 
-          // Check if there's a guest cart in localStorage to merge
-          const guestCartStr = localStorage.getItem("shoesify_cart");
+          // Check if there's a guest cart in cookies to merge
+          const guestCartStr = getCookie("shoesify_cart");
           if (guestCartStr) {
             const guestCart: CartItem[] = JSON.parse(guestCartStr);
             if (guestCart.length > 0) {
@@ -74,8 +75,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             } else {
               setCartItems(dbCart);
             }
-            // Clear guest cart from localStorage
-            localStorage.removeItem("shoesify_cart");
+            // Clear guest cart from cookies
+            deleteCookie("shoesify_cart");
           } else {
             setCartItems(dbCart);
           }
@@ -85,16 +86,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           setIsLoaded(true);
         }
       } else {
-        // Guest user - load from localStorage
+        // Guest user - load from cookies
         try {
-          const guestCartStr = localStorage.getItem("shoesify_cart");
+          const guestCartStr = getCookie("shoesify_cart");
           if (guestCartStr) {
             setCartItems(JSON.parse(guestCartStr));
           } else {
             setCartItems([]);
           }
         } catch (err) {
-          console.error("Error loading cart from localStorage:", err);
+          console.error("Error loading cart from cookies:", err);
         } finally {
           setIsLoaded(true);
         }
@@ -118,9 +119,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         }
       } else {
         try {
-          localStorage.setItem("shoesify_cart", JSON.stringify(cartItems));
+          setCookie("shoesify_cart", JSON.stringify(cartItems));
         } catch (err) {
-          console.error("Error saving cart to localStorage:", err);
+          console.error("Error saving cart to cookies:", err);
         }
       }
     };

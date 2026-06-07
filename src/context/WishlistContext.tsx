@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import { getCookie, setCookie, deleteCookie } from "@/lib/cookies";
 
 interface WishlistContextType {
   wishlistItems: string[];
@@ -37,8 +38,8 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
             dbWishlist = docSnap.data().items || [];
           }
 
-          // Check if there's a guest wishlist in localStorage to merge
-          const guestWishlistStr = localStorage.getItem("shoesify_wishlist");
+          // Check if there's a guest wishlist in cookies to merge
+          const guestWishlistStr = getCookie("shoesify_wishlist");
           if (guestWishlistStr) {
             const guestWishlist: string[] = JSON.parse(guestWishlistStr);
             if (guestWishlist.length > 0) {
@@ -52,8 +53,8 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
             } else {
               setWishlistItems(dbWishlist);
             }
-            // Clear guest wishlist from localStorage
-            localStorage.removeItem("shoesify_wishlist");
+            // Clear guest wishlist from cookies
+            deleteCookie("shoesify_wishlist");
           } else {
             setWishlistItems(dbWishlist);
           }
@@ -63,16 +64,16 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
           setIsLoaded(true);
         }
       } else {
-        // Guest user - load from localStorage
+        // Guest user - load from cookies
         try {
-          const guestWishlistStr = localStorage.getItem("shoesify_wishlist");
+          const guestWishlistStr = getCookie("shoesify_wishlist");
           if (guestWishlistStr) {
             setWishlistItems(JSON.parse(guestWishlistStr));
           } else {
             setWishlistItems([]);
           }
         } catch (err) {
-          console.error("Error loading wishlist from localStorage:", err);
+          console.error("Error loading wishlist from cookies:", err);
         } finally {
           setIsLoaded(true);
         }
@@ -96,9 +97,9 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
         }
       } else {
         try {
-          localStorage.setItem("shoesify_wishlist", JSON.stringify(wishlistItems));
+          setCookie("shoesify_wishlist", JSON.stringify(wishlistItems));
         } catch (err) {
-          console.error("Error saving wishlist to localStorage:", err);
+          console.error("Error saving wishlist to cookies:", err);
         }
       }
     };
