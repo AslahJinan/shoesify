@@ -21,18 +21,24 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
   const [wishlistItems, setWishlistItems] = useState<string[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
-  const prevUserRef = useRef<User | null>(null);
 
-  // Load wishlist on auth state changes
+  // Load initial wishlist from cookies on mount (runs once on client side to avoid hydration mismatch)
+  useEffect(() => {
+    try {
+      const guestWishlistStr = getCookie("shoesify_wishlist");
+      if (guestWishlistStr) {
+        setWishlistItems(JSON.parse(guestWishlistStr));
+      }
+    } catch (err) {
+      console.error("Error loading wishlist from cookies on mount:", err);
+    }
+  }, []);
+
+  // Sync with Firestore if logged in
   useEffect(() => {
     if (authLoading) return;
 
-    const prevUser = prevUserRef.current;
-    prevUserRef.current = user;
-
-    setIsLoaded(false); // Disable saving while loading the new user's wishlist
-
-    const loadWishlist = async () => {
+    const syncWithDb = async () => {
       if (user) {
         try {
           const docRef = doc(db, "wishlists", user.uid);
@@ -43,78 +49,48 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
             dbWishlist = docSnap.data().items || [];
           }
 
-          // Check if there's a guest wishlist in cookies to merge
-          const guestWishlistStr = getCookie("shoesify_wishlist");
-          if (guestWishlistStr) {
-            const guestWishlist: string[] = JSON.parse(guestWishlistStr);
-            if (guestWishlist.length > 0) {
-              // Merge guestWishlist and dbWishlist (unique elements)
-              const mergedSet = new Set([...dbWishlist, ...guestWishlist]);
-              const mergedWishlist = Array.from(mergedSet);
+          // Merge Firestore wishlist with current state wishlist (loaded from cookies)
+          setWishlistItems((prevItems) => {
+            const mergedSet = new Set([...dbWishlist, ...prevItems]);
+            const mergedWishlist = Array.from(mergedSet);
 
-              // Save merged wishlist back to Firestore
-              await setDoc(docRef, { items: mergedWishlist }, { merge: true });
-              setWishlistItems(mergedWishlist);
-            } else {
-              setWishlistItems(dbWishlist);
-            }
-            // Clear guest wishlist from cookies
-            deleteCookie("shoesify_wishlist");
-          } else {
-            setWishlistItems(dbWishlist);
-          }
+            // Write merged wishlist back to Firestore and cookies
+            setDoc(docRef, { items: mergedWishlist }, { merge: true });
+            setCookie("shoesify_wishlist", JSON.stringify(mergedWishlist));
+            return mergedWishlist;
+          });
         } catch (err) {
-          console.error("Error loading wishlist from Firestore:", err);
+          console.error("Error syncing wishlist with Firestore:", err);
         } finally {
           setIsLoaded(true);
         }
       } else {
-        // Guest user - load from cookies
-        // If transitioning from logged-in to logged-out (logout), preserve current state in cookies
-        if (prevUser !== null) {
-          try {
-            setCookie("shoesify_wishlist", JSON.stringify(wishlistItems));
-          } catch (err) {
-            console.error("Error saving wishlist to cookies on logout:", err);
-          }
-          setIsLoaded(true);
-        } else {
-          try {
-            const guestWishlistStr = getCookie("shoesify_wishlist");
-            if (guestWishlistStr) {
-              setWishlistItems(JSON.parse(guestWishlistStr));
-            } else {
-              setWishlistItems([]);
-            }
-          } catch (err) {
-            console.error("Error loading wishlist from cookies:", err);
-          } finally {
-            setIsLoaded(true);
-          }
-        }
+        setIsLoaded(true);
       }
     };
 
-    loadWishlist();
+    syncWithDb();
   }, [user, authLoading]);
 
-  // Persist wishlist updates to Firestore (if logged in) or localStorage (if guest)
+  // Persist wishlist updates to cookies (always) and Firestore (if logged in)
   useEffect(() => {
     if (!isLoaded || authLoading) return;
 
     const syncWishlist = async () => {
+      // Save to cookies
+      try {
+        setCookie("shoesify_wishlist", JSON.stringify(wishlistItems));
+      } catch (err) {
+        console.error("Error saving wishlist to cookies:", err);
+      }
+
+      // Save to Firestore if logged in
       if (user) {
         try {
           const docRef = doc(db, "wishlists", user.uid);
           await setDoc(docRef, { items: wishlistItems }, { merge: true });
         } catch (err) {
           console.error("Error saving wishlist to Firestore:", err);
-        }
-      } else {
-        try {
-          setCookie("shoesify_wishlist", JSON.stringify(wishlistItems));
-        } catch (err) {
-          console.error("Error saving wishlist to cookies:", err);
         }
       }
     };

@@ -35,18 +35,23 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  const prevUserRef = useRef<User | null>(null);
+  // Load initial cart from cookies on mount (runs once on client side to avoid hydration mismatch)
+  useEffect(() => {
+    try {
+      const guestCartStr = getCookie("shoesify_cart");
+      if (guestCartStr) {
+        setCartItems(JSON.parse(guestCartStr));
+      }
+    } catch (err) {
+      console.error("Error loading cart from cookies on mount:", err);
+    }
+  }, []);
 
-  // Load cart on auth state changes
+  // Sync with Firestore if logged in
   useEffect(() => {
     if (authLoading) return;
 
-    const prevUser = prevUserRef.current;
-    prevUserRef.current = user;
-
-    setIsLoaded(false); // Disable saving while loading the new user's cart state
-
-    const loadCart = async () => {
+    const syncWithDb = async () => {
       if (user) {
         try {
           const docRef = doc(db, "carts", user.uid);
@@ -57,75 +62,52 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             dbCart = docSnap.data().items || [];
           }
 
-          // Check if there's a guest cart in cookies to merge
-          const guestCartStr = getCookie("shoesify_cart");
-          if (guestCartStr) {
-            const guestCart: CartItem[] = JSON.parse(guestCartStr);
-            if (guestCart.length > 0) {
-              // Merge guestCart and dbCart
-              const mergedCart = [...dbCart];
-              guestCart.forEach((guestItem) => {
-                const existingIndex = mergedCart.findIndex(
-                  (item) => item.id === guestItem.id && item.size === guestItem.size
-                );
-                if (existingIndex > -1) {
-                  mergedCart[existingIndex].quantity += guestItem.quantity;
-                } else {
-                  mergedCart.push(guestItem);
-                }
-              });
+          // Merge Firestore cart with current state cart (loaded from cookies)
+          setCartItems((prevItems) => {
+            const merged = [...dbCart];
+            prevItems.forEach((localItem) => {
+              const existingIndex = merged.findIndex(
+                (item) => item.id === localItem.id && item.size === localItem.size
+              );
+              if (existingIndex > -1) {
+                // Take the max quantity to avoid duplicating counts
+                merged[existingIndex].quantity = Math.max(merged[existingIndex].quantity, localItem.quantity);
+              } else {
+                merged.push(localItem);
+              }
+            });
 
-              // Save merged cart back to Firestore
-              await setDoc(docRef, { items: mergedCart }, { merge: true });
-              setCartItems(mergedCart);
-            } else {
-              setCartItems(dbCart);
-            }
-            // Clear guest cart from cookies
-            deleteCookie("shoesify_cart");
-          } else {
-            setCartItems(dbCart);
-          }
+            // Write merged cart back to Firestore and cookies
+            setDoc(docRef, { items: merged }, { merge: true });
+            setCookie("shoesify_cart", JSON.stringify(merged));
+            return merged;
+          });
         } catch (err) {
-          console.error("Error loading cart from Firestore:", err);
+          console.error("Error syncing cart with Firestore:", err);
         } finally {
           setIsLoaded(true);
         }
       } else {
-        // Guest user - load from cookies
-        // If transitioning from logged-in to logged-out (logout), preserve current state in cookies
-        if (prevUser !== null) {
-          try {
-            setCookie("shoesify_cart", JSON.stringify(cartItems));
-          } catch (err) {
-            console.error("Error saving cart to cookies on logout:", err);
-          }
-          setIsLoaded(true);
-        } else {
-          try {
-            const guestCartStr = getCookie("shoesify_cart");
-            if (guestCartStr) {
-              setCartItems(JSON.parse(guestCartStr));
-            } else {
-              setCartItems([]);
-            }
-          } catch (err) {
-            console.error("Error loading cart from cookies:", err);
-          } finally {
-            setIsLoaded(true);
-          }
-        }
+        setIsLoaded(true);
       }
     };
 
-    loadCart();
+    syncWithDb();
   }, [user, authLoading]);
 
-  // Persist cart updates to Firestore (if logged in) or localStorage (if guest)
+  // Persist cart updates to cookies (always) and Firestore (if logged in)
   useEffect(() => {
     if (!isLoaded || authLoading) return;
 
     const syncCart = async () => {
+      // Save to cookies
+      try {
+        setCookie("shoesify_cart", JSON.stringify(cartItems));
+      } catch (err) {
+        console.error("Error saving cart to cookies:", err);
+      }
+
+      // Save to Firestore if logged in
       if (user) {
         try {
           const docRef = doc(db, "carts", user.uid);
@@ -133,16 +115,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         } catch (err) {
           console.error("Error saving cart to Firestore:", err);
         }
-      } else {
-        try {
-          setCookie("shoesify_cart", JSON.stringify(cartItems));
-        } catch (err) {
-          console.error("Error saving cart to cookies:", err);
-        }
       }
     };
 
-    // Debounce/run sync
     syncCart();
   }, [cartItems, isLoaded, user, authLoading]);
 
