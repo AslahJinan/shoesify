@@ -3,6 +3,7 @@
 import React, { useState, use } from "react";
 import { products } from "@/data/products";
 import { useCart } from "@/context/CartContext";
+import { useWishlist } from "@/context/WishlistContext";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -22,6 +23,7 @@ export default function ProductDetailPage({ params }: ProductPageProps) {
   }
 
   const { addToCart } = useCart();
+  const { toggleWishlist, isInWishlist } = useWishlist();
   const [selectedSize, setSelectedSize] = useState("US 10.0");
   const [added, setAdded] = useState(false);
 
@@ -118,7 +120,7 @@ export default function ProductDetailPage({ params }: ProductPageProps) {
           <div className="flex flex-col sm:flex-row gap-4 mt-2">
             <button
               onClick={handleAddToCart}
-              className={`flex-1 font-label-lg text-label-lg py-5 px-8 rounded-lg transition-all duration-300 active:scale-95 flex items-center justify-center gap-2 uppercase tracking-widest shadow-lg cursor-pointer ${
+              className={`flex-grow sm:flex-1 font-label-lg text-label-lg py-5 px-8 rounded-lg transition-all duration-300 active:scale-95 flex items-center justify-center gap-2 uppercase tracking-widest shadow-lg cursor-pointer ${
                 added
                   ? "bg-green-600 text-white shadow-green-600/20"
                   : "bg-primary-container hover:bg-primary text-on-primary-container shadow-primary-container/20"
@@ -136,10 +138,28 @@ export default function ProductDetailPage({ params }: ProductPageProps) {
                   addToCart(product, selectedSize, 1);
                 }
               }}
-              className="flex-1 bg-on-background hover:bg-on-background/90 text-on-primary font-label-lg text-label-lg py-5 px-8 rounded-lg transition-all duration-300 active:scale-95 flex items-center justify-center gap-2 uppercase tracking-widest text-center"
+              className="flex-grow sm:flex-1 bg-on-background hover:bg-on-background/90 text-on-primary font-label-lg text-label-lg py-5 px-8 rounded-lg transition-all duration-300 active:scale-95 flex items-center justify-center gap-2 uppercase tracking-widest text-center"
             >
               Buy Now
             </Link>
+            
+            {/* Wishlist Toggle */}
+            <button
+              onClick={() => toggleWishlist(product.id)}
+              className={`p-5 rounded-lg border transition-all duration-300 active:scale-90 flex items-center justify-center cursor-pointer group ${
+                isInWishlist(product.id)
+                  ? "border-primary text-primary bg-primary/5 shadow-md shadow-primary/5"
+                  : "border-outline-variant hover:border-primary text-secondary hover:text-primary"
+              }`}
+              aria-label={isInWishlist(product.id) ? "Remove from wishlist" : "Add to wishlist"}
+            >
+              <span 
+                className="material-symbols-outlined transition-transform duration-300 group-hover:scale-110"
+                style={{ fontVariationSettings: `'FILL' ${isInWishlist(product.id) ? 1 : 0}` }}
+              >
+                favorite
+              </span>
+            </button>
           </div>
 
           {/* Subtle Trust Signals */}

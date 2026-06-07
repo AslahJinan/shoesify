@@ -6,9 +6,11 @@ import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
+import { useWishlist } from "@/context/WishlistContext";
 
 export default function Header() {
   const { cartCount } = useCart();
+  const { wishlistCount } = useWishlist();
   const { user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
@@ -77,6 +79,21 @@ export default function Header() {
               type="text"
             />
           </div>
+          <Link 
+            href="/wishlist" 
+            className="relative cursor-pointer active:scale-95 transition-transform block"
+            aria-label="Wishlist"
+          >
+            <span className="material-symbols-outlined text-on-surface hover:text-primary transition-colors" style={{ fontSize: "28px" }}>
+              favorite
+            </span>
+            {wishlistCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-primary text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                {wishlistCount}
+              </span>
+            )}
+          </Link>
+
           <Link 
             href="/cart" 
             className="relative cursor-pointer active:scale-95 transition-transform block"
@@ -194,10 +211,22 @@ export default function Header() {
           </button>
           <button 
             onClick={() => handleNavClick("kids")}
-            className="text-left font-label-lg text-label-lg py-2 text-on-surface hover:text-primary"
+            className="text-left font-label-lg text-label-lg py-2 text-on-surface hover:text-primary border-b border-surface-container/50"
           >
             Kids
           </button>
+          <Link 
+            href="/wishlist"
+            onClick={() => setMobileMenuOpen(false)}
+            className="text-left font-label-lg text-label-lg py-2 text-on-surface hover:text-primary flex items-center justify-between"
+          >
+            <span>Wishlist</span>
+            {wishlistCount > 0 && (
+              <span className="bg-primary text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
+                {wishlistCount}
+              </span>
+            )}
+          </Link>
           <div className="flex items-center bg-surface-container rounded-full px-4 py-2 mt-2">
             <span className="material-symbols-outlined text-secondary mr-2" style={{ fontSize: "20px" }}>
               search

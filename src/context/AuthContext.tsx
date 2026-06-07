@@ -12,6 +12,8 @@ import {
   signOut,
   GoogleAuthProvider,
   signInWithPopup,
+  setPersistence,
+  browserLocalPersistence,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
@@ -34,6 +36,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
+    // Explicitly set persistent session using Firebase's built-in persistence
+    setPersistence(auth, browserLocalPersistence)
+      .catch((err) => console.error("Error setting Firebase auth persistence:", err));
+
     // Listen for authentication state changes
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -24,6 +24,39 @@ export default function CartPage() {
   const [shippingPincode, setShippingPincode] = useState("");
   const [shippingPhone, setShippingPhone] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Load checkout details from localStorage on mount
+  useEffect(() => {
+    try {
+      const storedData = localStorage.getItem("shoesify_checkout_form");
+      if (storedData) {
+        const { name, address, city, pincode, phone } = JSON.parse(storedData);
+        if (name) setShippingName(name);
+        if (address) setShippingAddress(address);
+        if (city) setShippingCity(city);
+        if (pincode) setShippingPincode(pincode);
+        if (phone) setShippingPhone(phone);
+      }
+    } catch (err) {
+      console.error("Error restoring checkout form from localStorage:", err);
+    }
+  }, []);
+
+  // Save checkout details to localStorage on change
+  useEffect(() => {
+    try {
+      const formData = {
+        name: shippingName,
+        address: shippingAddress,
+        city: shippingCity,
+        pincode: shippingPincode,
+        phone: shippingPhone,
+      };
+      localStorage.setItem("shoesify_checkout_form", JSON.stringify(formData));
+    } catch (err) {
+      console.error("Error saving checkout form to localStorage:", err);
+    }
+  }, [shippingName, shippingAddress, shippingCity, shippingPincode, shippingPhone]);
 
   const shipping = cartCount > 0 ? (cartSubtotal > 200 ? 0 : 15) : 0;
   const taxRate = 0.0825; // 8.25% tax
